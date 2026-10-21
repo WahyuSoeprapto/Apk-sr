@@ -1,0 +1,39 @@
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ekstrak proyek dari ZIP
+        run: |
+          ZIP=$(ls *.zip | head -n 1)
+          echo "Memakai: $ZIP"
+          mkdir proj
+          unzip -q "$ZIP" -d proj
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build APK
+        working-directory: proj
+        run: gradle assembleDebug --no-daemon --stacktrace
+      - name: Siapkan APK
+        run: cp proj/app/build/outputs/apk/debug/app-debug.apk W-Smart-Rider-Map.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: W-Smart-Rider-Map
+          path: W-Smart-Rider-Map.apk
+      - name: Buat rilis (APK bisa diunduh langsung)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "build-${{ github.run_number }}" W-Smart-Rider-Map.apk \
+            --title "Build ${{ github.run_number }}" --notes "APK W-Smart Rider Map"
