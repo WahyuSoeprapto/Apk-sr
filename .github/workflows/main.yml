@@ -24,7 +24,27 @@ jobs:
           gradle-version: '8.9'
       - name: Build APK
         working-directory: proj
-        run: gradle assembleDebug --no-daemon --stacktrace
+        run: |
+          set +e
+          gradle assembleDebug --no-daemon --console=plain > ../build.log 2>&1
+          code=$?
+          if [ $code -ne 0 ]; then
+            {
+              echo "### Build gagal - penyebab:"
+              echo '```'
+              grep -n -E "error:|What went wrong|Execution failed|Could not|not found|cannot find symbol" -A4 ../build.log | head -80
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "===== 120 baris terakhir ====="
+            tail -n 120 ../build.log
+          fi
+          exit $code
+      - name: Simpan log build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
       - name: Siapkan APK
         run: cp proj/app/build/outputs/apk/debug/app-debug.apk W-Smart-Rider-Map.apk
       - uses: actions/upload-artifact@v4
